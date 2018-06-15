@@ -1,3 +1,8 @@
+# Install:
+```
+pip install git+http://github.com/boolman/gistclient
+```
+
 # Usage:
 
 ## List gists of specified user
