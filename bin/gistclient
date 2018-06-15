@@ -1,0 +1,132 @@
+from oauth2client.client import AccessTokenCredentials
+import os
+import sys
+import requests
+import json
+import httplib2
+from fire import Fire
+
+class GistException(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+        pass
+
+    def __str__(self):
+        return self.msg
+
+class httpClient(object):
+    '''http client '''
+    def __init__(self):
+      self.ACCESS_TOKEN = os.environ['GITHUB_TOKEN']
+      self.USER_AGENT = 'my-user-agent/0.01'
+      self.URL = 'https://api.github.com/users'
+      self.HEADERS = { 'content-type': 'application/json', 'accept': 'application/vnd.github.v3+json'}
+
+      credentials = AccessTokenCredentials(self.ACCESS_TOKEN, self.USER_AGENT)
+      http = httplib2.Http()
+      self.http = credentials.authorize(http)
+
+
+    def GET(self, **kwargs):
+        '''GET requests '''
+        url = self.URL
+        if 'url' in kwargs and kwargs['url'] is not None:
+            url = kwargs['url']    
+
+        resp, content = self.http.request(url, headers=self.HEADERS)
+        return content.decode('utf8')
+
+    def POST(self, **kwargs):
+        '''POST requests '''
+        url = 'https://api.github.com'
+        if 'url' in kwargs and kwargs['url'] is not None:
+            url = kwargs['url']
+        if 'data' not in kwargs or kwargs['data'] is None:
+            return None  
+        resp, content = self.http.request(url, body=json.dumps(kwargs['data']), method='POST', headers=self.HEADERS)
+        return content.decode('utf8')
+
+    def DELETE(self, **kwargs):
+        '''DELETE requests'''
+        if 'url' not in kwargs or kwargs['url'] is None:
+            return None
+
+        resp, content = self.http.request(kwargs['url'], method='DELETE', headers=self.HEADERS)
+        if 'status' in resp and resp['status'] == '204':
+            return True
+
+        return False
+
+class GistClient(object):
+    '''Gist public interface'''
+
+    def __init__(self):
+        self.http = httpClient()
+        self.apiUrl = 'https://api.github.com'
+        self.headers = { 'content-type': 'application/json', 'accept': 'application/vnd.github.v3+json'}
+
+    def ListGists(self, user=None):
+        '''List all the Gist-URLs of a user'''
+        kwargs = {}
+        if user is not None:
+            kwargs['url'] = self.apiUrl + '/users/' + user + '/gists'
+        else:
+            return None
+         
+        resp = json.loads(self.http.GET(**kwargs))
+        if len(resp) > 0:
+            return [f['url'] for f in resp]
+        else:
+            return None
+
+    def ViewGist(self, url=None):
+        '''View content of a Gist'''
+        if url is None:
+            return None
+        kwargs = { "url": url }
+        resp = json.loads(self.http.GET(**kwargs))
+        return resp['files']
+
+
+    def DelGist(self, url=None):
+        '''Delete a Gist-URL'''
+        if url is None:
+            return None
+        kwargs = { "url": url }
+        resp = self.http.DELETE(**kwargs)
+        return resp
+
+    def AddGist(self, description=None, filepath=None, user=None):
+        '''Create new Gist from readable file'''
+        if filepath is None or not os.path.isfile(filepath) or user is None:
+            return None
+
+        try:
+            with open(filepath, 'r') as f:
+                data = f.read()
+        except:
+            return None
+
+        kwargs = { "user": user,
+                   "url": 'https://api.github.com/gists',
+                   "data": { 
+                     "files": {
+                        os.path.basename(filepath): {
+                          "content": data
+                        }
+                     }
+                   }
+                 }
+
+        if description is not None:
+            kwargs['description'] = description
+        resp = json.loads(self.http.POST(**kwargs))
+        return resp
+
+if __name__ == '__main__':
+    if 'GITHUB_TOKEN' not in os.environ:
+        print("plz set the 'GITHUB_TOKEN' env variable")
+        sys.exit(2)
+
+    # Run GistClient
+    Fire(GistClient)
