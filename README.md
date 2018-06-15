@@ -33,5 +33,5 @@ $ python gists.py AddGist --filepath foobar.sh --user boolman
 
 ## Delete Gist
 ```bash
-$ python gists.py AddGist --filepath foobar.sh --user boolman
+$ python gists.py DelGist --url https://api.github.com/gists/8f54862da4d40c5206c168108b6c073b
 ```
