@@ -102,7 +102,7 @@ class GistClient(object):
         resp = self.http.DELETE(**kwargs)
         return resp
 
-    def AddGist(self, description=None, filepath=None, user=None):
+    def AddGist(self, description=None, filepath=None, user=None, public=False):
         '''Create new Gist from readable file'''
         if filepath is None or not os.path.isfile(filepath) or user is None:
             return None
@@ -117,6 +117,7 @@ class GistClient(object):
             "user": user,
             "url": 'https://api.github.com/gists',
             "data": {
+                "public": bool(public),
                 "files": {
                     os.path.basename(filepath): {
                         "content": data
@@ -126,7 +127,7 @@ class GistClient(object):
         }
 
         if description is not None:
-            kwargs['description'] = description
+            kwargs['data']['description'] = description
         resp = json.loads(self.http.POST(**kwargs))
         return resp
 
